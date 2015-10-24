@@ -1,9 +1,6 @@
 -- luacheck: globals Plot Canvas Frame
-
--- TODO: remove dependence on absolute path
-package.path = package.path..';/home/bart/documents/projects/lua-experiments/?.lua'
+package.path = package.path..';./?.lua'
 dofile "utils.lua"
-
 
 Plot = {_G = _G}
 -- luacheck: push

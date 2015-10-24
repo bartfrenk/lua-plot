@@ -1,39 +1,25 @@
--- luacheck: globals Base Plot Canvas Frame type
+-- luacheck: globals Plot Canvas Frame
 
--- TODO: put utility functions in seperate file and namespace
+-- TODO: remove dependence on absolute path
+package.path = package.path..';/home/bart/documents/projects/lua-experiments/?.lua'
+dofile "utils.lua"
 
-Plot = {}
+
+Plot = {_G = _G}
+-- luacheck: push
+-- luacheck: ignore Utils
+local Base = Utils.Base
+local isPositiveInt = Utils.isPositiveInt
+local isBoundedInt = Utils.isBoundedInt
+local makeString = Utils.makeString
+local mapToStr = Utils.mapToStr
+local type = Utils.type
+-- luacheck: pop
+
 local setmetatable = setmetatable
-local pcall = pcall
-local pairs = pairs
 local error = error
-local table = table
-local globalType = type
-local getmetatable = getmetatable
-setfenv(1, Plot)
 
-function type(x)
-  local mt = getmetatable(x)
-  if (mt and mt.__type) then
-    return mt.__type
-  else
-    return globalType(x)
-  end
-end
-
-local function mapToStr(map)
-  local strings = {}
-  local success
-  local str
-  for key, value in pairs(map) do
-    -- allow value to be non-printable
-    success, str = pcall(function() return key..": "..value end)
-    if success then
-      table.insert(strings, str)
-    end
-  end
-  return table.concat(strings, ", ")
-end
+_G.setfenv(1, Plot)
 
 local function affineMap(from, to)
   local function fn(x)
@@ -48,13 +34,6 @@ local function intervalToStr(interval)
   return "["..interval[1]..", "..interval[2].."]"
 end
 
-local function isPositiveInt(x)
-  if (type(x) ~= "number") then
-    return false
-  end
-  return (x % 1 == 0) and (x > 0)
-end
-
 local function isInterval(x)
   if (type(x) ~= "table") then
     return false
@@ -62,23 +41,8 @@ local function isInterval(x)
   return (#x == 2 and type(x[1]) == "number" and type(x[2]) == "number")
 end
 
-local function tostring(self)
-  return type(self)..": {"..mapToStr(self).."}"
-end
-
-Base = {}
-Base.__tostring = tostring
-
-function Base:create()
-  local instance = {}
-  setmetatable(instance, self)
-  self.__index = self
-  self.__type = "Base"
-  return instance
-end
-
 Canvas = Base:create()
-Canvas.__tostring = tostring
+Canvas.__tostring = makeString
 
 function Canvas:create(width, height, rows, columns)
   rows = rows or 1
@@ -101,7 +65,7 @@ function Canvas:frame(domain, range, row, column)
   row = row or 1
   column = column or 1
   -- change to isBoundedInt
-  if not isPositiveInt(row) or not isPositiveInt(column) or row > self.rows or column > self.columns then
+  if not isBoundedInt(row, {1, self.rows}) or not isBoundedInt(column, {1, self.columns}) then
     error("Frame does not exist")
   end
   if (not isInterval(domain) or not isInterval(range)) then
@@ -124,12 +88,12 @@ Frame = Base:create()
 
 function Frame:create(canvas, domain, range, row, column)
   -- TODO: check arguments
-  local widthMap = affineMap(domain, canvas:pixelWidthRange(column))
-  local heightMap = affineMap(range, canvas:pixelHeightRange(row))
+  local domainMap = affineMap(domain, canvas:pixelWidthRange(column))
+  local rangeMap = affineMap(range, canvas:pixelHeightRange(row))
 
   -- optimization: with canvas maps and ranges are functions of each other
   local instance = {parent = canvas, row = row, column = column,
-                    widthMap = widthMap, heightMap = heightMap,
+                    domainMap = domainMap, rangeMap = rangeMap,
                     domain = domain, range = range}
   setmetatable(instance, self)
   self.__index = self
@@ -142,3 +106,14 @@ function Frame:__tostring()
               "range: "..intervalToStr(self.range)
   return type(self)..": {"..mapToStr(self)..", "..str.."}"
 end
+
+_G.setfenv(1, _G)
+
+local function test()
+  local canvas = Plot.Canvas:create(10, 10)
+  print(canvas)
+  local frame = canvas:frame()
+  print(frame)
+end
+
+test()

@@ -11,7 +11,7 @@ print("FreeImage version: "..FreeImage.getVersion())
 local img = FreeImage.create(16, 16);
 print(img)
 img:clear(0xFF, 0xFF, 0xFF)
-img:put(1, 1, 0xFF, 0, 0)
+img:putPixel(1, 1, 0xFF, 0, 0)
 
 img:save("test.png")
 

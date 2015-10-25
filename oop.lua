@@ -51,6 +51,7 @@ function Canvas:create(width, height, rows, columns)
   end
   local instance = {width = width, height = height, rows = rows, columns = columns}
   setmetatable(instance, self)
+  -- TODO: this could move outside of the function as it needs to be done only once
   self.__index = self
   self.__type = "Canvas"
   return instance

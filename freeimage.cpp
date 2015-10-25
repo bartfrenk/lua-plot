@@ -9,11 +9,32 @@ extern "C" {
 #define BPP 24
 #define IMAGE_FORMAT FIF_PNG
 
-// pass stack position to better match luaL_check functions
-static FIBITMAP **checkFreeImage(lua_State *L) {
-    void *udata = luaL_checkudata(L, 1, "FreeImage.methods");
-    luaL_argcheck(L, udata != NULL, 1, "Expected a FreeImage bitmap");
+// TODO: put static functions in anonymous namespace
+
+struct Point {
+    size_t x;
+    size_t y;
+};
+
+static FIBITMAP **checkFreeImage(lua_State *L, int narg) {
+    void *udata = luaL_checkudata(L, narg, "FreeImage.methods");
+    luaL_argcheck(L, udata != NULL, narg, "Expected a FreeImage bitmap");
     return (FIBITMAP **) udata;
+}
+
+static RGBQUAD checkColor(lua_State *L, int narg) {
+    RGBQUAD color;
+    color.rgbRed = luaL_checkinteger(L, narg);
+    color.rgbGreen = luaL_checkinteger(L, narg + 1);
+    color.rgbBlue = luaL_checkinteger(L, narg + 2);
+    return color;
+}
+
+static Point checkPoint(lua_State *L, int narg) {
+    Point point;
+    point.x = luaL_checkinteger(L, narg);
+    point.y = luaL_checkinteger(L, narg + 1);
+    return point;
 }
 
 static int l_create(lua_State *L) {
@@ -34,7 +55,7 @@ static int l_create(lua_State *L) {
 }
 
 static int l_destroy(lua_State *L) {
-    FIBITMAP **bitmap = checkFreeImage(L);
+    FIBITMAP **bitmap = checkFreeImage(L, 1);
     FreeImage_Unload(*bitmap);
     return 0;
 }
@@ -61,43 +82,42 @@ static int l_init(__attribute__((unused)) lua_State *L) {
     return 0;
 }
 
+static int l_putLine(lua_State *L) {
+    FIBITMAP **bitmap = checkFreeImage(L, 1);
+    Point p = checkPoint(L, 2);
+    Point q = checkPoint(L, 4);
+    RGBQUAD color = checkColor(L, 6);
+}
+
 static int l_putPixel(lua_State *L) {
     // TODO: check arguments
-    FIBITMAP **bitmap = checkFreeImage(L);
-    int x = luaL_checkinteger(L, 2);
-    int y = luaL_checkinteger(L, 3);
-    RGBQUAD color;
-    color.rgbRed = luaL_checkinteger(L, 4);
-    color.rgbGreen = luaL_checkinteger(L, 5);
-    color.rgbBlue = luaL_checkinteger(L, 6);
-    FreeImage_SetPixelColor(*bitmap, x, y, &color);
+    FIBITMAP **bitmap = checkFreeImage(L, 1);
+    Point point = checkPoint(L, 2);
+    RGBQUAD color = checkColor(L, 4);
+    FreeImage_SetPixelColor(*bitmap, point.x, point.y, &color);
     return 0;
 }
 
 static int l_size(lua_State *L) {
-    FIBITMAP **bitmap = checkFreeImage(L);
-    unsigned int width = FreeImage_GetWidth(*bitmap);
-    unsigned int height = FreeImage_GetHeight(*bitmap);
+    FIBITMAP **bitmap = checkFreeImage(L, 1);
+    size_t width = FreeImage_GetWidth(*bitmap);
+    size_t height = FreeImage_GetHeight(*bitmap);
     lua_pushinteger(L, width);
     lua_pushinteger(L, height);
     return 2;
 }
 
 static int l_save(lua_State *L) {
-    FIBITMAP **bitmap = checkFreeImage(L);
+    FIBITMAP **bitmap = checkFreeImage(L, 1);
     const char* name = luaL_checkstring(L, 2);
     bool result = FreeImage_Save(IMAGE_FORMAT, *bitmap, name);
     lua_pushboolean(L, result);
     return 1;
 }
 
-// TODO: factor out checkColor
 static int l_clear(lua_State *L) {
-    FIBITMAP **bitmap = checkFreeImage(L);
-    RGBQUAD color;
-    color.rgbRed = luaL_checkinteger(L, 2);
-    color.rgbGreen = luaL_checkinteger(L, 3);
-    color.rgbBlue = luaL_checkinteger(L, 4);
+    FIBITMAP **bitmap = checkFreeImage(L, 1);
+    RGBQUAD color = checkColor(L, 2);
     size_t width = FreeImage_GetWidth(*bitmap);
     size_t height = FreeImage_GetHeight(*bitmap);
     for (size_t x = 0; x < width; ++x)
@@ -107,9 +127,9 @@ static int l_clear(lua_State *L) {
 }
 
 static int l_tostring(lua_State *L) {
-    FIBITMAP **bitmap = checkFreeImage(L);
-    unsigned int width = FreeImage_GetWidth(*bitmap);
-    unsigned int height = FreeImage_GetHeight(*bitmap);
+    FIBITMAP **bitmap = checkFreeImage(L, 1);
+    size_t width = FreeImage_GetWidth(*bitmap);
+    size_t height = FreeImage_GetHeight(*bitmap);
     lua_pushfstring(L, "FreeImage: %d x %d", width, height);
     return 1;
 }
